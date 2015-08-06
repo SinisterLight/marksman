@@ -7,6 +7,8 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/nats-io/nats"
+
 	"gopkg.in/mgo.v2"
 )
 
@@ -20,14 +22,14 @@ var (
 	agentsC *mgo.Collection
 )
 
+var (
+	flagAddr    = flag.String("addr", ":8080", "serve HTTP on `address`")
+	flagNatsURL = flag.String("nats", nats.DefaultURL, "nats URL")
+)
+
 func main() {
 	log.SetFlags(0)
 	log.SetPrefix("marksman: ")
-
-	var (
-		addr = flag.String("addr", ":8080", "serve HTTP on `address`")
-	)
-
 	flag.Parse()
 
 	http.HandleFunc(metricsAPIPath, metricsHandler)
@@ -44,8 +46,8 @@ func main() {
 	session.SetMode(mgo.Monotonic, true)
 	agentsC = session.DB("recon-dev").C("agents")
 
-	log.Println("Server started: http://localhost" + *addr)
-	log.Fatal(http.ListenAndServe(*addr, nil))
+	log.Println("Server started: http://localhost" + *flagAddr)
+	log.Fatal(http.ListenAndServe(*flagAddr, nil))
 }
 
 func metricsHandler(w http.ResponseWriter, r *http.Request) {
@@ -86,7 +88,16 @@ func agentsHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		w.WriteHeader(http.StatusCreated)
-		w.Write([]byte(a.UID))
+		nurl := struct {
+			NatsURL string `json:"nats_url"`
+		}{
+			NatsURL: *flagNatsURL,
+		}
+		enc := json.NewEncoder(w)
+		if err := enc.Encode(nurl); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
 		return
 	default:
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
