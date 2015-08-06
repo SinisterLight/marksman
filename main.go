@@ -11,8 +11,8 @@ import (
 )
 
 const (
-	metricsPath = "/metrics"
-	agentsPath  = "/agents"
+	metricsAPIPath = "/api/metrics"
+	agentsAPIPath  = "/api/agents"
 )
 
 var (
@@ -29,8 +29,8 @@ func main() {
 
 	flag.Parse()
 
-	http.HandleFunc(metricsPath, metricsHandler)
-	http.HandleFunc(agentsPath, agentsHandler)
+	http.HandleFunc(metricsAPIPath, metricsHandler)
+	http.HandleFunc(agentsAPIPath, agentsHandler)
 	http.Handle("/", http.FileServer(http.Dir("./public")))
 
 	session, err := mgo.Dial("localhost")
