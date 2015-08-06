@@ -16,7 +16,8 @@ const (
 )
 
 var (
-	ca *mgo.Collection
+	// agents collection
+	agentsC *mgo.Collection
 )
 
 func main() {
@@ -41,7 +42,7 @@ func main() {
 
 	// Optional. Switch the session to a monotonic behavior.
 	session.SetMode(mgo.Monotonic, true)
-	ca = session.DB("recon-dev").C("agents")
+	agentsC = session.DB("recon-dev").C("agents")
 
 	log.Println("Server started: http://localhost" + *addr)
 	log.Fatal(http.ListenAndServe(*addr, nil))
@@ -57,7 +58,7 @@ func agentsHandler(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case "GET":
 		var R []Agent
-		err := ca.Find(nil).All(&R)
+		err := agentsC.Find(nil).All(&R)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -79,7 +80,7 @@ func agentsHandler(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "UID can't be empty", http.StatusBadRequest)
 			return
 		}
-		err := ca.Insert(a)
+		err := agentsC.Insert(a)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
