@@ -48,10 +48,12 @@ func main() {
 }
 
 func metricsHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
 	fmt.Fprintf(w, "TODO")
 }
 
 func agentsHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
 	switch r.Method {
 	case "GET":
 		var R []Agent
