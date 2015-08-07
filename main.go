@@ -111,9 +111,3 @@ func agentsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 }
-
-// Agent represents a recon agent running on
-// a machine.
-type Agent struct {
-	UID string
-}
