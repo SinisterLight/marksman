@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/codeignition/recon"
 	"github.com/nats-io/nats"
 
 	"gopkg.in/mgo.v2"
@@ -65,7 +66,7 @@ func agentsHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	switch r.Method {
 	case "GET":
-		var R []Agent
+		var R []recon.Agent
 		err := agentsC.Find(nil).All(&R)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -78,7 +79,7 @@ func agentsHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	case "POST":
-		var a Agent
+		var a recon.Agent
 		dec := json.NewDecoder(r.Body)
 		if err := dec.Decode(&a); err != nil {
 			http.Error(w, "unable to decode json", http.StatusBadRequest)
