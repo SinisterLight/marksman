@@ -66,14 +66,14 @@ func agentsHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	switch r.Method {
 	case "GET":
-		var R []recon.Agent
-		err := agentsC.Find(nil).All(&R)
+		var agents []recon.Agent
+		err := agentsC.Find(nil).All(&agents)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 		enc := json.NewEncoder(w)
-		if err := enc.Encode(R); err != nil {
+		if err := enc.Encode(agents); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
