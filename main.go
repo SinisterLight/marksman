@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/json"
 	"flag"
-	"fmt"
 	"log"
 	"net/http"
 
@@ -24,6 +23,9 @@ const (
 var (
 	// agents collection
 	agentsC *mgo.Collection
+
+	// metrics collection
+	metricsC *mgo.Collection
 )
 
 // Command line flags
@@ -52,6 +54,7 @@ func main() {
 	// Optional. Switch the session to a monotonic behavior.
 	session.SetMode(mgo.Monotonic, true)
 	agentsC = session.DB("recon-dev").C("agents")
+	metricsC = session.DB("recon-dev").C("metrics")
 
 	log.Println("Server started: http://localhost" + *flagAddr)
 	log.Fatal(http.ListenAndServe(*flagAddr, nil))
@@ -59,7 +62,38 @@ func main() {
 
 func metricsHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	fmt.Fprintf(w, "TODO")
+	switch r.Method {
+	case "GET":
+		var metrics []map[string]interface{}
+		err := metricsC.Find(nil).All(&metrics)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		enc := json.NewEncoder(w)
+		if err := enc.Encode(metrics); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		return
+	case "POST":
+		var data map[string]interface{}
+		dec := json.NewDecoder(r.Body)
+		if err := dec.Decode(&data); err != nil {
+			http.Error(w, "unable to decode json", http.StatusBadRequest)
+			return
+		}
+		err := metricsC.Insert(data)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		w.WriteHeader(http.StatusCreated)
+		return
+	default:
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
 }
 
 func agentsHandler(w http.ResponseWriter, r *http.Request) {
