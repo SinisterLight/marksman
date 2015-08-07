@@ -17,11 +17,16 @@ const (
 	agentsAPIPath  = "/api/agents"
 )
 
+// TODO: Instead of using a global for each collection,
+// abstract this into an interface, which makes it
+// easier for testing.
 var (
 	// agents collection
 	agentsC *mgo.Collection
 )
 
+// Command line flags
+// prepend flag to variable names to not pollute the global namespace.
 var (
 	flagAddr    = flag.String("addr", ":8080", "serve HTTP on `address`")
 	flagNatsURL = flag.String("nats", nats.DefaultURL, "nats URL")
@@ -30,6 +35,7 @@ var (
 func main() {
 	log.SetFlags(0)
 	log.SetPrefix("marksman: ")
+
 	flag.Parse()
 
 	http.HandleFunc(metricsAPIPath, metricsHandler)
