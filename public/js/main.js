@@ -1,3 +1,9 @@
+/*
+ Copyright 2015 CodeIgnition. All rights reserved.
+ Use of this source code is governed by a BSD
+ license that can be found in the LICENSE file.
+*/
+
 function postContactToGoogle() {
     var email = $('#user_email').val();
     console.log(email);
