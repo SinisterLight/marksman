@@ -32,6 +32,14 @@ type Agent struct {
 	UpdatedAt    time.Time `json:"updated_at"`
 }
 
+// agentOutput is the structure that's present in the JSON API.
+// It specifies a contract with the clients (e.g. frontend).
+// So, be careful while changing it and update the clients accordingly.
+type agentOutput struct {
+	Agent
+	Status string `json:"status"`
+}
+
 // TODO: Instead of using a global for each collection,
 // abstract this into an interface, which makes it
 // easier for testing.
@@ -145,10 +153,7 @@ func agentHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		b := struct {
-			Agent
-			Status string `json:"status"`
-		}{
+		b := agentOutput{
 			Agent:  a,
 			Status: a.Status(),
 		}
@@ -165,14 +170,6 @@ func agentHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// agentOutput is the structure that's present in the JSON API.
-// It specifies a contract with the clients (e.g. frontend).
-// So, be careful while changing it and update the clients accordingly.
-type agentOutput struct {
-	Agent
-	Status string `json:"status"`
-}
-
 func agentsHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	switch r.Method {
@@ -186,7 +183,10 @@ func agentsHandler(w http.ResponseWriter, r *http.Request) {
 
 		b := make([]agentOutput, len(agents))
 		for i, a := range agents {
-			b[i] = agentOutput{a, a.Status()}
+			b[i] = agentOutput{
+				Agent:  a,
+				Status: a.Status(),
+			}
 		}
 
 		enc := json.NewEncoder(w)
