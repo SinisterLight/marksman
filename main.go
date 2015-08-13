@@ -11,13 +11,17 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/codeignition/recon"
 	"github.com/nats-io/nats"
 
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
 
+// TODO: If possible, extract the path constants into a separate package
+// which can be used both by marksman and recond.
+
+// Different URL paths.
+// They are not hardcoded so that changing them is easier.
 const (
 	metricsAPIPath = "/api/metrics"
 	agentsAPIPath  = "/api/agents"
@@ -28,8 +32,8 @@ const (
 // a machine.
 type Agent struct {
 	UID          string    `json:"uid"`
-	RegisteredAt time.Time `json:"registered_at"`
-	UpdatedAt    time.Time `json:"updated_at"`
+	RegisteredAt time.Time `json:"registered_at"` // time at which the agent was registered
+	UpdatedAt    time.Time `json:"updated_at"`    // time at which the agent metrics were last received / updated
 }
 
 // agentOutput is the structure that's present in the JSON API.
@@ -84,55 +88,6 @@ func main() {
 
 	log.Println("Server started: http://localhost" + *flagAddr)
 	log.Fatal(http.ListenAndServe(*flagAddr, mux))
-}
-
-func metricsHandler(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	switch r.Method {
-	case "GET":
-		var metrics []recon.Metric
-		err := metricsC.Find(nil).All(&metrics)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		enc := json.NewEncoder(w)
-		if err := enc.Encode(metrics); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		return
-	case "POST":
-		var m recon.Metric
-		dec := json.NewDecoder(r.Body)
-		if err := dec.Decode(&m); err != nil {
-			http.Error(w, "unable to decode json", http.StatusBadRequest)
-			return
-		}
-		err := metricsC.Insert(m)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		var a Agent
-		err = agentsC.Find(bson.M{"uid": m.AgentUID}).One(&a)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		a.UpdatedAt = time.Now()
-		err = agentsC.Update(bson.M{"uid": m.AgentUID}, a)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-
-		w.WriteHeader(http.StatusCreated)
-		return
-	default:
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
 }
 
 func (a Agent) Status() string {
