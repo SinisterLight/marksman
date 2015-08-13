@@ -7,6 +7,7 @@ package main
 import (
 	"encoding/json"
 	"flag"
+	"fmt"
 	"log"
 	"net/http"
 	"time"
@@ -23,9 +24,10 @@ import (
 // Different URL paths.
 // They are not hardcoded so that changing them is easier.
 const (
-	metricsAPIPath = "/api/metrics"
-	agentsAPIPath  = "/api/agents"
-	agentAPIPath   = agentsAPIPath + "/"
+	metricsAPIPath  = "/api/metrics"
+	agentsAPIPath   = "/api/agents"
+	agentAPIPath    = agentsAPIPath + "/"
+	agentMsgAPIPath = "/api/send"
 )
 
 // Agent represents a recon daemon running on
@@ -55,6 +57,11 @@ var (
 	metricsC *mgo.Collection
 )
 
+// NATS variables
+var (
+	natsEncConn *nats.EncodedConn
+)
+
 // Command line flags
 // prepend flag to variable names to not pollute the global namespace.
 var (
@@ -74,6 +81,7 @@ func main() {
 	mux.HandleFunc(metricsAPIPath, metricsHandler)
 	mux.HandleFunc(agentsAPIPath, agentsHandler)
 	mux.HandleFunc(agentAPIPath, agentHandler)
+	mux.HandleFunc(agentMsgAPIPath, agentMsgHandler)
 
 	session, err := mgo.Dial("localhost")
 	if err != nil {
@@ -85,6 +93,16 @@ func main() {
 	session.SetMode(mgo.Monotonic, true)
 	agentsC = session.DB("recon-dev").C("agents")
 	metricsC = session.DB("recon-dev").C("metrics")
+
+	nc, err := nats.Connect(*flagNatsURL)
+	if err != nil {
+		log.Fatalln(err)
+	}
+	natsEncConn, err = nats.NewEncodedConn(nc, "json")
+	if err != nil {
+		log.Fatalln(err)
+	}
+	defer natsEncConn.Close()
 
 	log.Println("Server started: http://localhost" + *flagAddr)
 	log.Fatal(http.ListenAndServe(*flagAddr, mux))
@@ -186,4 +204,14 @@ func agentsHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
+}
+
+func agentMsgHandler(w http.ResponseWriter, r *http.Request) {
+	msg := r.FormValue("msg")
+	uid := r.FormValue("uid")
+	if err := natsEncConn.Publish(uid, msg); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	fmt.Fprintf(w, "msg: %s sent to agent: %s\n", msg, uid)
 }
