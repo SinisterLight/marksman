@@ -9,17 +9,28 @@ import (
 	"flag"
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/codeignition/recon"
 	"github.com/nats-io/nats"
 
 	"gopkg.in/mgo.v2"
+	"gopkg.in/mgo.v2/bson"
 )
 
 const (
 	metricsAPIPath = "/api/metrics"
 	agentsAPIPath  = "/api/agents"
+	agentAPIPath   = agentsAPIPath + "/"
 )
+
+// Agent represents a recon daemon running on
+// a machine.
+type Agent struct {
+	UID          string    `json:"uid"`
+	RegisteredAt time.Time `json:"registered_at"`
+	UpdatedAt    time.Time `json:"updated_at"`
+}
 
 // TODO: Instead of using a global for each collection,
 // abstract this into an interface, which makes it
@@ -45,9 +56,12 @@ func main() {
 
 	flag.Parse()
 
-	http.HandleFunc(metricsAPIPath, metricsHandler)
-	http.HandleFunc(agentsAPIPath, agentsHandler)
-	http.Handle("/", http.FileServer(http.Dir("./public")))
+	mux := http.NewServeMux()
+
+	mux.Handle("/", http.FileServer(http.Dir("./public")))
+	mux.HandleFunc(metricsAPIPath, metricsHandler)
+	mux.HandleFunc(agentsAPIPath, agentsHandler)
+	mux.HandleFunc(agentAPIPath, agentHandler)
 
 	session, err := mgo.Dial("localhost")
 	if err != nil {
@@ -61,14 +75,14 @@ func main() {
 	metricsC = session.DB("recon-dev").C("metrics")
 
 	log.Println("Server started: http://localhost" + *flagAddr)
-	log.Fatal(http.ListenAndServe(*flagAddr, nil))
+	log.Fatal(http.ListenAndServe(*flagAddr, mux))
 }
 
 func metricsHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	switch r.Method {
 	case "GET":
-		var metrics []map[string]interface{}
+		var metrics []recon.Metric
 		err := metricsC.Find(nil).All(&metrics)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -81,18 +95,69 @@ func metricsHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	case "POST":
-		var data map[string]interface{}
+		var m recon.Metric
 		dec := json.NewDecoder(r.Body)
-		if err := dec.Decode(&data); err != nil {
+		if err := dec.Decode(&m); err != nil {
 			http.Error(w, "unable to decode json", http.StatusBadRequest)
 			return
 		}
-		err := metricsC.Insert(data)
+		err := metricsC.Insert(m)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
+		var a Agent
+		err = agentsC.Find(bson.M{"uid": m.AgentUID}).One(&a)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		a.UpdatedAt = time.Now()
+		err = agentsC.Update(bson.M{"uid": m.AgentUID}, a)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
 		w.WriteHeader(http.StatusCreated)
+		return
+	default:
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+}
+
+func (a Agent) Status() string {
+	if time.Since(a.UpdatedAt) > 10*time.Second {
+		return "offline"
+	}
+	return "online"
+}
+
+func agentHandler(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case "GET":
+		uid := r.URL.Path[len(agentAPIPath):]
+		var a Agent
+		err := agentsC.Find(bson.M{"uid": uid}).One(&a)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		b := struct {
+			Agent
+			Status string `json:"status"`
+		}{
+			Agent:  a,
+			Status: a.Status(),
+		}
+
+		enc := json.NewEncoder(w)
+		if err := enc.Encode(b); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
 		return
 	default:
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
@@ -104,20 +169,30 @@ func agentsHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	switch r.Method {
 	case "GET":
-		var agents []recon.Agent
+		var agents []Agent
 		err := agentsC.Find(nil).All(&agents)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
+
+		type AgentOutput struct {
+			Agent
+			Status string `json:"status"`
+		}
+		b := make([]AgentOutput, len(agents))
+		for i, a := range agents {
+			b[i] = AgentOutput{a, a.Status()}
+		}
+
 		enc := json.NewEncoder(w)
-		if err := enc.Encode(agents); err != nil {
+		if err := enc.Encode(b); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 		return
 	case "POST":
-		var a recon.Agent
+		var a Agent
 		dec := json.NewDecoder(r.Body)
 		if err := dec.Decode(&a); err != nil {
 			http.Error(w, "unable to decode json", http.StatusBadRequest)
@@ -127,6 +202,10 @@ func agentsHandler(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "UID can't be empty", http.StatusBadRequest)
 			return
 		}
+
+		a.RegisteredAt = time.Now()
+		a.UpdatedAt = time.Now()
+
 		err := agentsC.Insert(a)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
