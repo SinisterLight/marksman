@@ -180,15 +180,31 @@ func agentsHandler(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "UID can't be empty", http.StatusBadRequest)
 			return
 		}
-
-		a.RegisteredAt = time.Now()
-		a.UpdatedAt = time.Now()
-
-		err := agentsC.Insert(a)
+		// check whether the agent is already registered.
+		// Insert it only if its not registered else just
+		// update the UpdatedAt field for the agent in the DB.
+		err := agentsC.Find(bson.M{"uid": a.UID}).One(&a)
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
+			if err == mgo.ErrNotFound {
+				a.RegisteredAt = time.Now()
+				a.UpdatedAt = time.Now()
+				if err := agentsC.Insert(a); err != nil {
+					http.Error(w, err.Error(), http.StatusInternalServerError)
+					return
+				}
+			} else {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+		} else {
+			a.UpdatedAt = time.Now()
+			err = agentsC.Update(bson.M{"uid": a.UID}, a)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
 		}
+
 		w.WriteHeader(http.StatusCreated)
 		nurl := struct {
 			NatsURL string `json:"nats_url"`
