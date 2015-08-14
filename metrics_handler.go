@@ -31,6 +31,7 @@ func metricsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	case "POST":
 		var m recon.Metric
+		defer r.Body.Close()
 		dec := json.NewDecoder(r.Body)
 		if err := dec.Decode(&m); err != nil {
 			http.Error(w, "unable to decode json", http.StatusBadRequest)

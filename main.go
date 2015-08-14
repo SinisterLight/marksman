@@ -170,6 +170,7 @@ func agentsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	case "POST":
 		var a Agent
+		defer r.Body.Close()
 		dec := json.NewDecoder(r.Body)
 		if err := dec.Decode(&a); err != nil {
 			http.Error(w, "unable to decode json", http.StatusBadRequest)
