@@ -108,6 +108,10 @@ func main() {
 	log.Fatal(http.ListenAndServe(*flagAddr, mux))
 }
 
+// Status returns the status of the agent.
+// It is calculated on-demand. If the agent was registered
+// or its metrics were updated in the last 10 seconds, it
+// returns "online", else "offline"
 func (a Agent) Status() string {
 	if time.Since(a.UpdatedAt) > 10*time.Second {
 		return "offline"
