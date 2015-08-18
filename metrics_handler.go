@@ -7,10 +7,8 @@ package main
 import (
 	"encoding/json"
 	"net/http"
-	"time"
 
 	"github.com/codeignition/recon"
-	"gopkg.in/mgo.v2/bson"
 )
 
 func metricsHandler(w http.ResponseWriter, r *http.Request) {
@@ -28,34 +26,6 @@ func metricsHandler(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		return
-	case "POST":
-		var m recon.Metric
-		defer r.Body.Close()
-		dec := json.NewDecoder(r.Body)
-		if err := dec.Decode(&m); err != nil {
-			http.Error(w, "unable to decode json", http.StatusBadRequest)
-			return
-		}
-		err := metricsC.Insert(m)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		var a Agent
-		err = agentsC.Find(bson.M{"uid": m.AgentUID}).One(&a)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		a.UpdatedAt = time.Now()
-		err = agentsC.Update(bson.M{"uid": m.AgentUID}, a)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-
-		w.WriteHeader(http.StatusCreated)
 		return
 	default:
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)

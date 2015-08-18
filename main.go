@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/codeignition/recon"
 	"github.com/nats-io/nats"
 
 	"gopkg.in/mgo.v2"
@@ -103,6 +104,25 @@ func main() {
 		log.Fatalln(err)
 	}
 	defer natsEncConn.Close()
+
+	// TODO: maybe write the handler separately for clarity?
+	natsEncConn.Subscribe("marksman_metrics", func(m *recon.Metric) {
+		fmt.Printf("Received update from Agent %s\n", m.AgentUID)
+		err := metricsC.Insert(m)
+		if err != nil {
+			log.Printf("failed to insert the metric from agent %s: %s", m.AgentUID, err)
+		}
+		var a Agent
+		err = agentsC.Find(bson.M{"uid": m.AgentUID}).One(&a)
+		if err != nil {
+			log.Printf("failed to find the agent %s: %s", m.AgentUID, err)
+		}
+		a.UpdatedAt = time.Now()
+		err = agentsC.Update(bson.M{"uid": m.AgentUID}, a)
+		if err != nil {
+			log.Printf("failed to update the agent %s: %s", m.AgentUID, err)
+		}
+	})
 
 	log.Println("Server started: http://localhost" + *flagAddr)
 	log.Fatal(http.ListenAndServe(*flagAddr, mux))
