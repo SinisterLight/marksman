@@ -29,6 +29,7 @@ const (
 	agentsAPIPath   = "/api/agents"
 	agentAPIPath    = agentsAPIPath + "/"
 	agentMsgAPIPath = "/api/send"
+	policyAPIPath   = "/api/policy"
 )
 
 // Agent represents a recon daemon running on
@@ -83,6 +84,7 @@ func main() {
 	mux.HandleFunc(agentsAPIPath, agentsHandler)
 	mux.HandleFunc(agentAPIPath, agentHandler)
 	mux.HandleFunc(agentMsgAPIPath, agentMsgHandler)
+	mux.HandleFunc(policyAPIPath, policyHandler)
 
 	session, err := mgo.Dial("localhost")
 	if err != nil {
