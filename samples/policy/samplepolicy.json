@@ -1,0 +1,9 @@
+{
+	"name": "marksman-check",
+	"agent_uid": "24fc33694886",
+	"policy_type": "tcp",
+	"m": {
+		"frequency": "2s",
+		"port": ":3000"
+	}
+}

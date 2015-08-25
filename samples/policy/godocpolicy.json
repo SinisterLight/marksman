@@ -1,0 +1,9 @@
+{
+	"name": "godoc-check",
+	"agent_uid": "3c9393dc3689",
+	"policy_type": "tcp",
+	"m": {
+		"frequency": "2s",
+		"port": ":3030"
+	}
+}
