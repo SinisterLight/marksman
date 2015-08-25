@@ -9,6 +9,8 @@ import (
 	"net/http"
 	"time"
 
+	"gopkg.in/mgo.v2/bson"
+
 	"github.com/codeignition/recon/policy"
 )
 
@@ -25,6 +27,16 @@ func policyHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		if p.AgentUID == "" {
 			http.Error(w, "UID can't be empty", http.StatusBadRequest)
+			return
+		}
+		var a Agent
+		err := agentsC.Find(bson.M{"uid": p.AgentUID}).One(&a)
+		if err != nil {
+			http.Error(w, "recond agent unknown: check the agent UID and try again", http.StatusInternalServerError)
+			return
+		}
+		if a.Status() == "offline" {
+			http.Error(w, "recond agent offline: restart the agent and try again", http.StatusInternalServerError)
 			return
 		}
 		var replyErr error
