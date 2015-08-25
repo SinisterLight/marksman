@@ -39,13 +39,13 @@ func policyHandler(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "recond agent offline: restart the agent and try again", http.StatusInternalServerError)
 			return
 		}
-		var replyErr error
-		if err := natsEncConn.Request(p.AgentUID+"_policy", &p, &replyErr, 5*time.Second); err != nil {
+		var reply string
+		if err := natsEncConn.Request(p.AgentUID+"_policy", &p, &reply, 5*time.Second); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		if replyErr != nil {
-			http.Error(w, replyErr.Error(), http.StatusInternalServerError)
+		if reply != "policy ack" {
+			http.Error(w, reply, http.StatusInternalServerError)
 			return
 		}
 		return
