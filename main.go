@@ -58,6 +58,9 @@ var (
 
 	// metrics collection
 	metricsC *mgo.Collection
+
+	// events collection
+	eventsC *mgo.Collection
 )
 
 // NATS variables
@@ -97,6 +100,7 @@ func main() {
 	session.SetMode(mgo.Monotonic, true)
 	agentsC = session.DB("recon-dev").C("agents")
 	metricsC = session.DB("recon-dev").C("metrics")
+	eventsC = session.DB("recon-dev").C("events")
 
 	nc, err := nats.Connect(*flagNatsURL)
 	if err != nil {
@@ -128,7 +132,10 @@ func main() {
 	})
 
 	natsEncConn.Subscribe("policy_events", func(e *policy.Event) {
-		fmt.Printf("%+v\n", e)
+		err := eventsC.Insert(e)
+		if err != nil {
+			log.Printf("failed to insert event: %s", err)
+		}
 	})
 
 	log.Println("Server started: http://localhost" + *flagAddr)
