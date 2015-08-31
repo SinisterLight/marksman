@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/codeignition/recon"
+	"github.com/codeignition/recon/policy"
 	"github.com/nats-io/nats"
 
 	"gopkg.in/mgo.v2"
@@ -124,6 +125,10 @@ func main() {
 		if err != nil {
 			log.Printf("failed to update the agent %s: %s", m.AgentUID, err)
 		}
+	})
+
+	natsEncConn.Subscribe("policy_events", func(e *policy.Event) {
+		fmt.Printf("%+v\n", e)
 	})
 
 	log.Println("Server started: http://localhost" + *flagAddr)
