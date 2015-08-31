@@ -48,6 +48,14 @@ func policyHandler(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, reply, http.StatusInternalServerError)
 			return
 		}
+		// TODO: if the policy is successfully sent to the agent, store the agent's PolicyConfig in the master server's DB as well.
+		return
+	case "PATCH":
+		// TODO: implement
+	case "DELETE":
+		// TODO: implement
+	default:
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 }
