@@ -12,7 +12,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/codeignition/recon"
 	"github.com/codeignition/recon/policy"
 	"github.com/nats-io/nats"
 
@@ -26,7 +25,7 @@ import (
 // Different URL paths.
 // They are not hardcoded so that changing them is easier.
 const (
-	metricsAPIPath  = "/api/metrics"
+	eventsAPIPath   = "/api/events"
 	agentsAPIPath   = "/api/agents"
 	agentAPIPath    = agentsAPIPath + "/"
 	agentMsgAPIPath = "/api/send"
@@ -56,9 +55,6 @@ var (
 	// agents collection
 	agentsC *mgo.Collection
 
-	// metrics collection
-	metricsC *mgo.Collection
-
 	// events collection
 	eventsC *mgo.Collection
 )
@@ -84,7 +80,7 @@ func main() {
 	mux := http.NewServeMux()
 
 	mux.Handle("/", http.FileServer(http.Dir("./public")))
-	mux.HandleFunc(metricsAPIPath, metricsHandler)
+	mux.HandleFunc(eventsAPIPath, eventsHandler)
 	mux.HandleFunc(agentsAPIPath, agentsHandler)
 	mux.HandleFunc(agentAPIPath, agentHandler)
 	mux.HandleFunc(agentMsgAPIPath, agentMsgHandler)
@@ -99,7 +95,6 @@ func main() {
 	// Optional. Switch the session to a monotonic behavior.
 	session.SetMode(mgo.Monotonic, true)
 	agentsC = session.DB("recon-dev").C("agents")
-	metricsC = session.DB("recon-dev").C("metrics")
 	eventsC = session.DB("recon-dev").C("events")
 
 	nc, err := nats.Connect(*flagNatsURL)
@@ -112,30 +107,26 @@ func main() {
 	}
 	defer natsEncConn.Close()
 
-	// TODO: maybe write the handler separately for clarity?
-	natsEncConn.Subscribe("marksman_metrics", func(m *recon.Metric) {
-		fmt.Printf("Received update from Agent %s\n", m.AgentUID)
-		err := metricsC.Insert(m)
-		if err != nil {
-			log.Printf("failed to insert the metric from agent %s: %s", m.AgentUID, err)
-		}
-		var a Agent
-		err = agentsC.Find(bson.M{"uid": m.AgentUID}).One(&a)
-		if err != nil {
-			log.Printf("failed to find the agent %s: %s", m.AgentUID, err)
-		}
-		a.UpdatedAt = time.Now()
-		err = agentsC.Update(bson.M{"uid": m.AgentUID}, a)
-		if err != nil {
-			log.Printf("failed to update the agent %s: %s", m.AgentUID, err)
-		}
-	})
-
 	natsEncConn.Subscribe("policy_events", func(e *policy.Event) {
-		err := eventsC.Insert(e)
+		uid := e.Policy.AgentUID
+		var a Agent
+		err := agentsC.Find(bson.M{"uid": uid}).One(&a)
+		if err != nil {
+			log.Printf("failed to find the agent %s: %s", uid, err)
+			return
+		}
+
+		a.UpdatedAt = time.Now()
+		err = agentsC.Update(bson.M{"uid": uid}, a)
+		if err != nil {
+			log.Printf("failed to update the agent %s: %s", uid, err)
+		}
+
+		err = eventsC.Insert(e)
 		if err != nil {
 			log.Printf("failed to insert event: %s", err)
 		}
+
 	})
 
 	log.Println("Server started: http://localhost" + *flagAddr)
