@@ -7,7 +7,6 @@ package main
 import (
 	"encoding/json"
 	"flag"
-	"fmt"
 	"log"
 	"net/http"
 	"time"
@@ -25,11 +24,10 @@ import (
 // Different URL paths.
 // They are not hardcoded so that changing them is easier.
 const (
-	eventsAPIPath   = "/api/events"
-	agentsAPIPath   = "/api/agents"
-	agentAPIPath    = agentsAPIPath + "/"
-	agentMsgAPIPath = "/api/send"
-	policyAPIPath   = "/api/policy"
+	eventsAPIPath = "/api/events"
+	agentsAPIPath = "/api/agents"
+	agentAPIPath  = agentsAPIPath + "/"
+	policyAPIPath = "/api/policy"
 )
 
 // Agent represents a recon daemon running on
@@ -83,7 +81,6 @@ func main() {
 	mux.HandleFunc(eventsAPIPath, eventsHandler)
 	mux.HandleFunc(agentsAPIPath, agentsHandler)
 	mux.HandleFunc(agentAPIPath, agentHandler)
-	mux.HandleFunc(agentMsgAPIPath, agentMsgHandler)
 	mux.HandleFunc(policyAPIPath, policyHandler)
 
 	session, err := mgo.Dial("127.0.0.1")
@@ -250,14 +247,4 @@ func agentsHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-}
-
-func agentMsgHandler(w http.ResponseWriter, r *http.Request) {
-	msg := r.FormValue("msg")
-	uid := r.FormValue("uid")
-	if err := natsEncConn.Publish(uid, msg); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	fmt.Fprintf(w, "msg: %s sent to agent: %s\n", msg, uid)
 }
