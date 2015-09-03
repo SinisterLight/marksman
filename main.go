@@ -13,6 +13,7 @@ import (
 
 	"github.com/codeignition/recon/policy"
 	"github.com/nats-io/nats"
+	"github.com/rs/cors"
 
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
@@ -128,7 +129,8 @@ func main() {
 	})
 
 	log.Println("Server started: http://localhost" + *flagAddr)
-	log.Fatal(http.ListenAndServe(*flagAddr, mux))
+	handler := cors.Default().Handler(mux)
+	log.Fatal(http.ListenAndServe(*flagAddr, handler))
 }
 
 // Status returns the status of the agent.
