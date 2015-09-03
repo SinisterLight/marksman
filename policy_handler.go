@@ -40,11 +40,11 @@ func policyHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		var reply string
-		if err := natsEncConn.Request(p.AgentUID+"_policy_add", &p, &reply, 5*time.Second); err != nil {
+		if err := natsEncConn.Request(p.AgentUID+"_add_policy", &p, &reply, 5*time.Second); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		if reply != "policy_add_ack" {
+		if reply != "add_policy_ack" {
 			http.Error(w, reply, http.StatusInternalServerError)
 			return
 		}
@@ -104,11 +104,11 @@ func policyHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		var reply string
-		if err := natsEncConn.Request(p.AgentUID+"_policy_delete", &p, &reply, 5*time.Second); err != nil {
+		if err := natsEncConn.Request(p.AgentUID+"_delete_policy", &p, &reply, 5*time.Second); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		if reply != "policy_delete_ack" {
+		if reply != "delete_policy_ack" {
 			http.Error(w, reply, http.StatusInternalServerError)
 			return
 		}
