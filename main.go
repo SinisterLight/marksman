@@ -34,6 +34,7 @@ const (
 // a machine.
 type Agent struct {
 	UID          string    `json:"uid"`
+	HostName     string    `json:"host_name"`
 	RegisteredAt time.Time `json:"registered_at"` // time at which the agent was registered
 	UpdatedAt    time.Time `json:"updated_at"`    // time at which the agent metrics were last received / updated
 }
