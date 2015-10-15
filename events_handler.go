@@ -7,6 +7,7 @@ package main
 import (
 	"encoding/json"
 	"net/http"
+	"time"
 
 	"github.com/codeignition/recon/policy"
 	"gopkg.in/mgo.v2/bson"
@@ -26,8 +27,21 @@ func eventsHandler(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "policy_name query string required", http.StatusInternalServerError)
 			return
 		}
+		t := r.FormValue("t")
+		if t == "" {
+			t = "5m"
+		}
+		d, err := time.ParseDuration(t)
+		if err != nil {
+			http.Error(w, "malformed time duration", http.StatusInternalServerError)
+			return
+		}
 		var events []policy.Event
-		err := eventsC.Find(bson.M{"policy.agentuid": uid, "policy.name": policyName}).All(&events)
+		err = eventsC.Find(bson.M{
+			"policy.agentuid": uid,
+			"policy.name":     policyName,
+			"time":            bson.M{"$gt": time.Now().Add(-d)},
+		}).All(&events)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
