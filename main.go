@@ -107,7 +107,7 @@ func main() {
 	defer natsEncConn.Close()
 
 	natsEncConn.Subscribe("policy_events", func(e *policy.Event) {
-		uid := e.Policy.AgentUID
+		uid := e.AgentUID
 		var a Agent
 		err := agentsC.Find(bson.M{"uid": uid}).One(&a)
 		if err != nil {

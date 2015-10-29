@@ -38,9 +38,9 @@ func eventsHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		var events []policy.Event
 		err = eventsC.Find(bson.M{
-			"policy.agentuid": uid,
-			"policy.name":     policyName,
-			"time":            bson.M{"$gt": time.Now().Add(-d)},
+			"agent_uid":   uid,
+			"policy_name": policyName,
+			"time":        bson.M{"$gt": time.Now().Add(-d)},
 		}).All(&events)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
