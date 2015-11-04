@@ -145,6 +145,7 @@ func (a Agent) Status() string {
 }
 
 func agentHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
 	switch r.Method {
 	case "GET":
 		uid := r.URL.Path[len(agentAPIPath):]
